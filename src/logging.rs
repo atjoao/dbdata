@@ -20,6 +20,7 @@ pub(crate) fn init_logger() {
             .encoder(Box::new(PatternEncoder::new(
                 "[{d(%Y-%m-%dT%H:%M:%S%.3f)}] [{l}]: {m}{n}",
             )))
+            .append(false)
             .build(log_file_path)
             .unwrap();
 
