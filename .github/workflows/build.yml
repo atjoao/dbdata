@@ -39,3 +39,31 @@ jobs:
         with:
           name: dbdata-release
           path: target/x86_64-pc-windows-msvc/release/*.dll
+
+      - name: Create Release folder
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          mkdir release
+          copy target\x86_64-pc-windows-msvc\release\dbdata.dll release\dbdata.dll
+          copy target\x86_64-pc-windows-msvc\debug\dbdata.dll release\dbdata_debug.dll
+
+      - name: Generate release info
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        id: release_info
+        shell: bash
+        run: |
+          echo "tag=v$(date +'%Y.%m.%d')-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_info.outputs.tag }}
+          name: dbdata ${{ steps.release_info.outputs.tag }}
+          draft: false
+          prerelease: false
+          files: |
+            release/dbdata.dll
+            release/dbdata_debug.dll
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
