@@ -1,44 +1,39 @@
-#[cfg(debug_assertions)]
 use {
-    std::{panic, sync::Once},
     log::LevelFilter,
-    log4rs::{append::file::FileAppender, config::{Appender, Root}, encode::pattern::PatternEncoder, Config},
+    log4rs::{
+        Config,
+        append::file::FileAppender,
+        config::{Appender, Root},
+        encode::pattern::PatternEncoder,
+    },
+    std::{panic, sync::Once},
     winapi::um::winuser::MessageBoxA,
 };
 
-#[cfg(debug_assertions)]
 static LOGGER: Once = Once::new();
 
-#[cfg(debug_assertions)]
 pub(crate) fn init_logger() {
     LOGGER.call_once(|| {
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        let log_file_path = format!("dbdata_{}.log", timestamp);
+        let log_file_path = "dbdata.log";
 
         let logfile = FileAppender::builder()
-            .encoder(Box::new(PatternEncoder::new("[{d(%Y-%m-%dT%H:%M:%S%.3f)}] [{l}]: {m}{n}")))
+            .encoder(Box::new(PatternEncoder::new(
+                "[{d(%Y-%m-%dT%H:%M:%S%.3f)}] [{l}]: {m}{n}",
+            )))
             .build(log_file_path)
             .unwrap();
 
         let config = Config::builder()
             .appender(Appender::builder().build("logfile", Box::new(logfile)))
-            .build(
-                Root::builder()
-                    .appender("logfile")
-                    .build(LevelFilter::Info),
-            )
+            .build(Root::builder().appender("logfile").build(LevelFilter::Info))
             .unwrap();
 
         let _handle = log4rs::init_config(config).unwrap();
-        
+
         log::info!("Logger initialized");
     });
 }
 
-#[cfg(debug_assertions)]
 pub(crate) fn setup_panic_handler() {
     panic::set_hook(Box::new(|panic_info| {
         let message = if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
@@ -65,9 +60,3 @@ pub(crate) fn setup_panic_handler() {
         log::error!("Panic occurred at {}: {}", location, message);
     }));
 }
-
-#[cfg(not(debug_assertions))]
-pub(crate) fn init_logger() { }
-
-#[cfg(not(debug_assertions))]
-pub(crate) fn setup_panic_handler() { }
