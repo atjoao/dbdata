@@ -15,7 +15,7 @@ winapi = { version = "0.3.9", features = ["minwindef", "winuser", "libloaderapi"
 
 prost = "0.14.3"
 prost-types = "0.14.3"
-reqwest = { version = "0.13.1", default-features = false, features = ["blocking", "json", "native-tls"] }
+reqwest = { version = "0.13.1", default-features = false, features = ["blocking", "json", "native-tls", "http2"] }
 
 native-tls = "0.2"
 base64 = "0.22"
