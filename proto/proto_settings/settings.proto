@@ -1,0 +1,49 @@
+syntax = "proto2";
+
+package mg.protocol.settings;
+
+import "proto_settings/common_settings.proto";
+
+message Notifications {
+    optional bool inGameEnabled = 1 [default = true];
+    optional bool permanentInGameEnabled = 2 [default = true];
+    optional bool inGameFriendOnlineEnabled = 3 [default = true];
+    optional bool sysTrayEnabled = 4 [default = true];
+    optional bool desktopFriendRequestEnabled = 5 [default = true];
+    optional bool desktopFriendOnlineEnabled = 6 [default = true];
+    optional bool desktopChatEnabled = 7 [default = true];
+    optional bool desktopFriendGameEnabled = 8 [default = true];
+    optional bool desktopGameInviteEnabled = 9 [default = true];
+    optional bool desktopPartyInviteEnabled = 10 [default = true];
+    optional bool desktopDownloadCompleteEnabled = 11 [default = true];
+    optional bool desktopGamePatchAvailableEnabled = 12 [default = true];
+    optional bool desktopPlayAvailableEnabled = 13 [default = true];
+    optional bool desktopGroupInviteEnabled = 14 [default = true];
+    optional bool desktopScreenshotsEnabled = 15 [default = true];
+    optional bool desktopAchievementsEnabled = 16 [default = true];
+    optional bool desktopClubActionsEnabled = 17 [default = false];
+}
+
+message SettingsModel {
+    optional User user = 1;
+    optional Overlay overlay = 2;
+    optional Language language = 3;
+    optional Misc misc = 4;
+    optional Position position = 5;
+    optional Notifications notifications = 6;
+    optional Masters masters = 7;
+    optional Hotkey hotkeys_overlayToggle = 9;
+    optional Hotkey hotkeys_overlayHide = 10;
+    optional Hotkey hotkeys_captureScreenshot = 11;
+    optional Downloads downloads = 12;
+    optional AutoPatching autoPatching = 14;
+    optional Spotlight spotlight = 15;
+    optional ModelessPositions modeless_positions = 16;
+    optional Conversations conversations = 17;
+    optional Epic epic = 18;
+    optional BrandedInstaller branded_installer = 19;
+    optional SharePlay sharePlay = 20;
+    optional RemotePlay remotePlay = 22;
+    
+    reserved 21, 13;
+}
