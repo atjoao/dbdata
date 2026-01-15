@@ -8,13 +8,12 @@ use std::{
 };
 
 use crate::proto::demux::{
-    AuthenticateReq, ClientVersionPush, DataMessage, Downstream, OpenConnectionReq, Push, Req,
-    Token, Upstream,
+    AuthenticateReq, ClientVersionPush, DataMessage, Downstream, GetPatchInfoReq,
+    OpenConnectionReq, Push, Req, Token, Upstream,
 };
 
 const DEMUX_HOST: &str = "dmx.upc.ubisoft.com";
 const DEMUX_PORT: u16 = 443;
-pub const CLIENT_VERSION: u32 = 12922;
 
 pub struct DemuxSocket {
     stream: Mutex<native_tls::TlsStream<TcpStream>>,
@@ -104,7 +103,8 @@ impl DemuxSocket {
     }
 
     pub fn push_version(&self) -> Result<(), Box<dyn Error>> {
-        log::info!("Pushing client version: {}", CLIENT_VERSION);
+        let latest_version = self.get_latest_version()?;
+        log::info!("Pushing client version: {}", latest_version);
 
         let upstream = Upstream {
             request: None,
@@ -113,7 +113,7 @@ impl DemuxSocket {
                 connection_closed: None,
                 keep_alive: None,
                 client_version: Some(ClientVersionPush {
-                    version: CLIENT_VERSION,
+                    version: latest_version,
                 }),
                 client_outdated: None,
                 product_started: None,
@@ -124,6 +124,39 @@ impl DemuxSocket {
         let data = upstream.encode_to_vec();
         self.send_raw(&data)?;
         Ok(())
+    }
+
+    pub fn get_latest_version(&self) -> Result<u32, Box<dyn Error>> {
+        log::info!("Getting latest version from server");
+
+        let req = Req {
+            request_id: self.next_request_id(),
+            authenticate_req: None,
+            get_patch_info_req: Some(GetPatchInfoReq {
+                patch_track_id: "DEFAULT".to_string(),
+                test_config: false,
+                track_type: Some(0),
+            }),
+            service_request: None,
+            open_connection_req: None,
+            client_ip_override: None,
+        };
+
+        let upstream = Upstream {
+            request: Some(req),
+            push: None,
+        };
+
+        let downstream = self.send_upstream_msg(upstream)?;
+
+        if let Some(rsp) = downstream.response {
+            if let Some(patch_rsp) = rsp.get_patch_info_rsp {
+                log::info!("Latest version from server: {}", patch_rsp.latest_version);
+                return Ok(patch_rsp.latest_version);
+            }
+        }
+
+        Err("Failed to get latest version".into())
     }
 
     fn send_keep_alive(&self) -> Result<(), Box<dyn Error>> {

@@ -23,21 +23,6 @@ impl Token {
         })
     }
 
-    pub fn save(&self, base: &Path) -> Result<(), Box<dyn Error>> {
-        let mut ini = ini::Ini::new();
-
-        ini.with_section(Some("token")).set("token", &self.token);
-
-        if let Some(ref ownership) = self.ownership {
-            ini.with_section(Some("token")).set("ownership", ownership);
-        }
-
-        ini.write_to_file(base.join("dbdata.ini"))?;
-        log::info!("Saved tokens to dbdata.ini");
-
-        Ok(())
-    }
-
     pub fn from_values(token: String, ownership: Option<String>) -> Self {
         Self { token, ownership }
     }
