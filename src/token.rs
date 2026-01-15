@@ -41,6 +41,30 @@ impl Token {
     pub fn from_values(token: String, ownership: Option<String>) -> Self {
         Self { token, ownership }
     }
+
+    pub fn save_with_dlcs(&self, base: &Path, dlcs: &[u32]) -> Result<(), Box<dyn Error>> {
+        let mut ini = ini::Ini::new();
+
+        ini.with_section(Some("token")).set("token", &self.token);
+
+        if let Some(ref ownership) = self.ownership {
+            ini.with_section(Some("token")).set("ownership", ownership);
+        }
+
+        if !dlcs.is_empty() {
+            let dlcs_str = dlcs
+                .iter()
+                .map(|d| d.to_string())
+                .collect::<Vec<_>>()
+                .join(",");
+            ini.with_section(Some("settings")).set("dlcs", dlcs_str);
+        }
+
+        ini.write_to_file(base.join("dbdata.ini"))?;
+        log::info!("Saved tokens and {} DLCs to dbdata.ini", dlcs.len());
+
+        Ok(())
+    }
 }
 
 #[derive(Debug)]

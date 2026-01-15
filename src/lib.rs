@@ -166,13 +166,13 @@ fn get_cached_or_fresh_token(
                 let token =
                     Token::from_values(result.game_token.clone(), result.ownership_token.clone());
 
-                if let Err(e) = token.save(dll_path) {
+                if let Err(e) = token.save_with_dlcs(dll_path, &result.owned_dlcs) {
                     log::error!("Failed to save tokens: {}", e);
                 }
 
                 if let Ok(mut settings) = SETTINGS.write() {
                     *settings = Some(Settings {
-                        dlcs: vec![],
+                        dlcs: result.owned_dlcs,
                         token,
                     });
                 }

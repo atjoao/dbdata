@@ -9,6 +9,7 @@ use crate::services::{DenuvoConnection, OwnershipConnection};
 pub struct AuthResult {
     pub game_token: String,
     pub ownership_token: Option<String>,
+    pub owned_dlcs: Vec<u32>,
 }
 
 pub fn authenticate_and_get_tokens(
@@ -60,7 +61,11 @@ pub fn authenticate_and_get_tokens(
     log::info!("Got game token");
 
     let ownership_list_token = if !dlcs.is_empty() || !owned_dlcs.is_empty() {
-        let dlcs_to_validate = if dlcs.is_empty() { owned_dlcs } else { dlcs };
+        let dlcs_to_validate = if dlcs.is_empty() {
+            owned_dlcs.clone()
+        } else {
+            dlcs
+        };
         match denuvo.get_ownership_list_token(config.app_id, &game_token, dlcs_to_validate) {
             Ok(token) => {
                 log::info!("Got ownership list token");
@@ -80,5 +85,6 @@ pub fn authenticate_and_get_tokens(
     Ok(AuthResult {
         game_token,
         ownership_token: ownership_list_token,
+        owned_dlcs,
     })
 }
