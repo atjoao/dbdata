@@ -22,21 +22,8 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Cache Protoc
-        id: cache-protoc
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/bin/protoc
-          key: ${{ runner.os }}-protoc-v28
-
       - name: Install Protoc
-        if: steps.cache-protoc.outputs.cache-hit != 'true'
         uses: arduino/setup-protoc@v3
-
-      - name: Add Protoc to PATH (from cache)
-        if: steps.cache-protoc.outputs.cache-hit == 'true'
-        shell: bash
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Build DLL (Debug)
         run: cargo build --target x86_64-pc-windows-msvc
