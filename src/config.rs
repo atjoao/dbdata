@@ -92,6 +92,7 @@ Party=0
 ; (you can check this by checking if a game starts steam on exe open)
 [Steam]
 Enable=0
+; Steamid to return to the game (change this to match your game's Steam App ID, check store link last digits)
 Id=0
 "#,
             app_id
