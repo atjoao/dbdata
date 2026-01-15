@@ -27,3 +27,5 @@ Make sure to have a valid account and replace in `uplay.ini` (this file is gener
 - [ubi-dbdata](https://github.com/denuvosanctuary/ubi-dbdata/tree/main) for original implementation and fork.
 - [UplayDB](https://github.com/UplayDB) for reverse engineering, code and protobuf files
 - Claude for writing code
+
+> this project is not related to ubisoft or any product.
