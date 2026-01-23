@@ -20,6 +20,19 @@ You need to replace the `dbdata.dll` file in the game directory with the one fro
 
 Make sure to have a valid account and replace in `dbdata.ini` (this file is generated at runtime) with a valid ownership/license to the game.
 
+## Configuration example
+
+```
+[Uplay]
+email=email@example.com
+password=superpassword
+[token]
+token=base64
+ownership=base64
+[settings]
+dlcs=12983,23432,23432
+```
+
 ## Credits
 
 - [ubi-dbdata](https://github.com/denuvosanctuary/ubi-dbdata/tree/main) for original implementation and fork.
