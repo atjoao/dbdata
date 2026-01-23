@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use super::{DemuxSocket, login};
-use crate::config::UplayConfig;
+use crate::config::DbDataConfig;
 use crate::services::{DenuvoConnection, OwnershipConnection};
 
 /// Result of the authentication flow
@@ -13,7 +13,7 @@ pub struct AuthResult {
 }
 
 pub fn authenticate_and_get_tokens(
-    config: &UplayConfig,
+    config: &DbDataConfig,
     request_token: &str,
     dlcs: Vec<u32>,
 ) -> Result<AuthResult, Box<dyn Error>> {

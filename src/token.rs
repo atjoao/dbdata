@@ -10,15 +10,22 @@ impl Token {
     pub fn new(base: &Path) -> Result<Self, Box<dyn Error>> {
         let ini = ini::Ini::load_from_file(base.join("dbdata.ini"))?;
 
+        let token = ini
+            .section(Some("token"))
+            .and_then(|sec| sec.get("token"))
+            .ok_or("Token not found in dbdata.ini file")?
+            .to_string();
+
+        if token.is_empty() {
+            return Err("Token is empty in dbdata.ini".into());
+        }
+
         Ok(Self {
-            token: ini
-                .section(Some("token"))
-                .and_then(|sec| sec.get("token"))
-                .ok_or("Token not found in dbdata.ini file")?
-                .to_string(),
+            token,
             ownership: ini
                 .section(Some("token"))
                 .and_then(|sec| sec.get("ownership"))
+                .filter(|s| !s.is_empty())
                 .map(|s| s.to_string()),
         })
     }
@@ -28,24 +35,26 @@ impl Token {
     }
 
     pub fn save_with_dlcs(&self, base: &Path, dlcs: &[u32]) -> Result<(), Box<dyn Error>> {
-        let mut ini = ini::Ini::new();
+        let ini_path = base.join("dbdata.ini");
+
+        let mut ini = ini::Ini::load_from_file(&ini_path).unwrap_or_else(|_| ini::Ini::new());
 
         ini.with_section(Some("token")).set("token", &self.token);
 
         if let Some(ref ownership) = self.ownership {
             ini.with_section(Some("token")).set("ownership", ownership);
+        } else {
+            ini.with_section(Some("token")).set("ownership", "");
         }
 
-        if !dlcs.is_empty() {
-            let dlcs_str = dlcs
-                .iter()
-                .map(|d| d.to_string())
-                .collect::<Vec<_>>()
-                .join(",");
-            ini.with_section(Some("settings")).set("dlcs", dlcs_str);
-        }
+        let dlcs_str = dlcs
+            .iter()
+            .map(|d| d.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        ini.with_section(Some("settings")).set("dlcs", dlcs_str);
 
-        ini.write_to_file(base.join("dbdata.ini"))?;
+        ini.write_to_file(&ini_path)?;
         log::info!("Saved tokens and {} DLCs to dbdata.ini", dlcs.len());
 
         Ok(())

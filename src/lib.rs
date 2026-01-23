@@ -17,13 +17,13 @@ use winapi::{
     um::{libloaderapi::GetModuleFileNameW, winnt::DLL_PROCESS_ATTACH, winuser::MessageBoxA},
 };
 
-use crate::config::UplayConfig;
+use crate::config::DbDataConfig;
 use crate::token::{Settings, Token};
 
 static DLL_PATH: OnceLock<PathBuf> = OnceLock::new();
 static APP_ID: OnceLock<u32> = OnceLock::new();
 static SETTINGS: RwLock<Option<Settings>> = RwLock::new(None);
-static UPLAY_CONFIG: OnceLock<Option<UplayConfig>> = OnceLock::new();
+static DBDATA_CONFIG: OnceLock<Option<DbDataConfig>> = OnceLock::new();
 
 #[unsafe(no_mangle)]
 extern "system" fn DllMain(module: HINSTANCE, reason: DWORD, _reserved: LPVOID) -> bool {
@@ -44,20 +44,33 @@ extern "system" fn DllMain(module: HINSTANCE, reason: DWORD, _reserved: LPVOID) 
             logging::init_logger();
             logging::setup_panic_handler();
 
+            if !DbDataConfig::exists(&dll_path) {
+                if let Err(e) = DbDataConfig::create_default(&dll_path) {
+                    log::error!("Failed to create default dbdata.ini: {}", e);
+                } else {
+                    message_box(
+                        "Setup Required",
+                        "A default 'dbdata.ini' has been created.\n\nPlease edit it with your Ubisoft account credentials (email and password) and restart the game.",
+                    );
+                    std::process::exit(0);
+                }
+            }
+
             if let Ok(settings) = Settings::new(&dll_path) {
                 if let Ok(mut s) = SETTINGS.write() {
                     *s = Some(settings);
                 }
+                log::info!("Loaded existing token from dbdata.ini");
             } else {
-                log::info!("Could not read dbdata.ini - will try online auth if uplay.ini exists");
+                log::info!("No valid token in dbdata.ini - will try online auth");
             }
 
-            let uplay_config = UplayConfig::load(&dll_path)
+            let dbdata_config = DbDataConfig::load(&dll_path)
                 .map_err(|e| {
-                    log::info!("Could not read uplay.ini: {}", e);
+                    log::info!("Could not read dbdata.ini config: {}", e);
                 })
                 .ok();
-            UPLAY_CONFIG.set(uplay_config).ok();
+            DBDATA_CONFIG.set(dbdata_config).ok();
         }
         _ => {}
     }
@@ -153,56 +166,53 @@ fn get_cached_or_fresh_token(
     let dll_path = DLL_PATH.get().unwrap();
     let app_id = *APP_ID.get().unwrap();
 
-    if let Some(Some(uplay_config)) = UPLAY_CONFIG.get() {
-        log::info!("Attempting online authentication with Ubisoft");
+    if let Some(Some(dbdata_config)) = DBDATA_CONFIG.get() {
+        log::info!("has_credentials={}", dbdata_config.has_credentials());
+        if dbdata_config.has_credentials() {
+            log::info!("Attempting online authentication with Ubisoft");
 
-        let mut config = uplay_config.clone();
-        config.app_id = app_id;
+            let mut config = dbdata_config.clone();
+            config.app_id = app_id;
 
-        match auth::authenticate_and_get_tokens(&config, request_token, vec![]) {
-            Ok(result) => {
-                log::info!("Authentication successful, saving tokens");
+            match auth::authenticate_and_get_tokens(&config, request_token, vec![]) {
+                Ok(result) => {
+                    log::info!("Authentication successful, saving tokens");
 
-                let token =
-                    Token::from_values(result.game_token.clone(), result.ownership_token.clone());
+                    let token = Token::from_values(
+                        result.game_token.clone(),
+                        result.ownership_token.clone(),
+                    );
 
-                if let Err(e) = token.save_with_dlcs(dll_path, &result.owned_dlcs) {
-                    log::error!("Failed to save tokens: {}", e);
+                    if let Err(e) = token.save_with_dlcs(dll_path, &result.owned_dlcs) {
+                        log::error!("Failed to save tokens: {}", e);
+                    }
+
+                    if let Ok(mut settings) = SETTINGS.write() {
+                        *settings = Some(Settings {
+                            dlcs: result.owned_dlcs,
+                            token,
+                        });
+                    }
+
+                    log::info!("Online authentication complete, game can continue");
+                    return true;
                 }
-
-                if let Ok(mut settings) = SETTINGS.write() {
-                    *settings = Some(Settings {
-                        dlcs: result.owned_dlcs,
-                        token,
-                    });
+                Err(e) => {
+                    log::error!("Authentication failed: {}", e);
+                    message_box(
+                        "Authentication Failed",
+                        &format!(
+                            "Failed to authenticate: {}\n\nFalling back to token_req.txt",
+                            e
+                        ),
+                    );
                 }
-
-                log::info!("Online authentication complete, game can continue");
-                return true;
             }
-            Err(e) => {
-                log::error!("Authentication failed: {}", e);
-                message_box(
-                    "Authentication Failed",
-                    &format!(
-                        "Failed to authenticate: {}\n\nFalling back to token_req.txt",
-                        e
-                    ),
-                );
-            }
+        } else {
+            log::info!("No credentials in dbdata.ini, falling back to token_req.txt");
         }
     } else {
-        if !UplayConfig::exists(dll_path) {
-            if let Err(e) = UplayConfig::create_default(dll_path, app_id) {
-                log::error!("Failed to create default uplay.ini: {}", e);
-            } else {
-                message_box(
-                    "Setup Required",
-                    "A default 'uplay.ini' has been created.\n\nPlease edit it with your Ubisoft account credentials and restart the game.",
-                );
-                std::process::exit(0);
-            }
-        }
+        log::info!("DBDATA_CONFIG is None, falling back to token_req.txt");
     }
 
     let request_token = format!("{}|{}", request_token, app_id);

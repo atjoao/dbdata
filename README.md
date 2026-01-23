@@ -16,11 +16,9 @@ cargo build --release
 
 ## Usage
 
-This project is to be used with [Uplay R1](https://github.com/atjoao/uplay_r1)
-
 You need to replace the `dbdata.dll` file in the game directory with the one from this project.
 
-Make sure to have a valid account and replace in `uplay.ini` (this file is generated at runtime) with a valid ownership/license to the game.
+Make sure to have a valid account and replace in `dbdata.ini` (this file is generated at runtime) with a valid ownership/license to the game.
 
 ## Credits
 
