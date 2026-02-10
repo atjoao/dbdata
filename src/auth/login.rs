@@ -1,9 +1,10 @@
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
-use native_tls::TlsConnector;
+use rustls::StreamOwned;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
+use std::sync::Arc;
 
 const LOGIN_HOST: &str = "public-ubiservices.ubi.com";
 const LOGIN_PATH: &str = "/v3/profiles/sessions";
@@ -73,8 +74,16 @@ pub fn login(email: &str, password: &str) -> Result<LoginCredentials, Box<dyn Er
     tcp_stream.set_write_timeout(Some(timeout))?;
 
     log::info!("TCP connected, starting TLS handshake...");
-    let connector = TlsConnector::new()?;
-    let mut tls_stream = connector.connect(LOGIN_HOST, tcp_stream)?;
+    let mut root_store = rustls::RootCertStore::empty();
+    root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+
+    let config = rustls::ClientConfig::builder()
+        .with_root_certificates(root_store)
+        .with_no_client_auth();
+
+    let server_name = LOGIN_HOST.try_into()?;
+    let client = rustls::ClientConnection::new(Arc::new(config), server_name)?;
+    let mut tls_stream = StreamOwned::new(client, tcp_stream);
     log::info!("TLS handshake complete");
 
     log::info!("Sending HTTP request...");

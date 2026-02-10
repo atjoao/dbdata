@@ -1,6 +1,7 @@
-use native_tls::TlsConnector;
 use prost::Message;
+use rustls::StreamOwned;
 use std::net::TcpStream;
+use std::sync::Arc;
 use std::{
     error::Error,
     io::{Read, Write},
@@ -16,7 +17,7 @@ const DEMUX_HOST: &str = "dmx.upc.ubisoft.com";
 const DEMUX_PORT: u16 = 443;
 
 pub struct DemuxSocket {
-    stream: Mutex<native_tls::TlsStream<TcpStream>>,
+    stream: Mutex<StreamOwned<rustls::ClientConnection, TcpStream>>,
     request_id: Mutex<u32>,
 }
 
@@ -35,8 +36,16 @@ impl DemuxSocket {
         tcp_stream.set_read_timeout(Some(timeout))?;
         tcp_stream.set_write_timeout(Some(timeout))?;
 
-        let connector = TlsConnector::new()?;
-        let tls_stream = connector.connect(DEMUX_HOST, tcp_stream)?;
+        let mut root_store = rustls::RootCertStore::empty();
+        root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+
+        let config = rustls::ClientConfig::builder()
+            .with_root_certificates(root_store)
+            .with_no_client_auth();
+
+        let server_name = DEMUX_HOST.try_into()?;
+        let client = rustls::ClientConnection::new(Arc::new(config), server_name)?;
+        let tls_stream = StreamOwned::new(client, tcp_stream);
 
         log::info!("Connected to demux server");
 
