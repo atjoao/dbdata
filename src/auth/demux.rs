@@ -39,9 +39,10 @@ impl DemuxSocket {
         let mut root_store = rustls::RootCertStore::empty();
         root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
 
-        let config = rustls::ClientConfig::builder()
-            .with_root_certificates(root_store)
-            .with_no_client_auth();
+        let config =
+            rustls::ClientConfig::builder_with_protocol_versions(&[&rustls::version::TLS12])
+                .with_root_certificates(root_store)
+                .with_no_client_auth();
 
         let server_name = DEMUX_HOST.try_into()?;
         let client = rustls::ClientConnection::new(Arc::new(config), server_name)?;
@@ -58,7 +59,8 @@ impl DemuxSocket {
     pub fn disconnect(&self) {
         log::info!("Disconnecting from demux server");
         if let Ok(mut stream) = self.stream.lock() {
-            let _ = stream.shutdown();
+            stream.conn.send_close_notify();
+            let _ = stream.sock.shutdown(std::net::Shutdown::Both);
         }
     }
 
